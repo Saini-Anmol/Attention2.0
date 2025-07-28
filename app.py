@@ -1,4 +1,3 @@
-# %%writefile app.py
 import streamlit as st
 from backend import (
     handle_general_chat, 
@@ -29,16 +28,16 @@ st.markdown("""
         font-family: 'Roboto', sans-serif;
     }
     .stApp {
-        background-color: #f0f4f8; /* A slightly cooler, more modern light grey */
+        background-color: var(--background-color);
     }
 
     /* Card-like containers with enhanced styling */
     .st-emotion-cache-z5fcl4, .st-emotion-cache-1r6slb0 {
         border-radius: 16px;
         padding: 2rem !important;
-        background-color: #ffffff;
+        background-color: var(--secondary-background-color);
         box-shadow: 0 8px 32px rgba(0,0,0,0.07);
-        border: 1px solid #e0e0e0;
+        border: 1px solid var(--separator-color);
         transition: all 0.3s ease-in-out;
     }
     .st-emotion-cache-z5fcl4:hover, .st-emotion-cache-1r6slb0:hover {
@@ -78,7 +77,7 @@ st.markdown("""
     /* Tabs Styling */
     .stTabs [data-baseweb="tab-list"] {
         gap: 16px;
-        border-bottom: 2px solid #e0e0e0;
+        border-bottom: 2px solid var(--separator-color);
     }
     .stTabs [data-baseweb="tab"] {
         height: 50px;
@@ -89,8 +88,8 @@ st.markdown("""
         transition: all 0.2s ease-in-out;
     }
     .stTabs [aria-selected="true"] {
-        border-bottom: 2px solid #4285F4;
-        color: #4285F4;
+        border-bottom: 2px solid var(--primary-color);
+        color: var(--primary-color);
     }
 
     /* Header Styling */
@@ -99,16 +98,16 @@ st.markdown("""
         font-weight: 700;
     }
     h3 {
-        color: #3c4043;
+        color: var(--text-color);
         font-weight: 500;
-        border-bottom: 2px solid #f0f4f8;
+        border-bottom: 2px solid var(--background-color);
         padding-bottom: 10px;
     }
 
     /* Sidebar Styling */
     .st-emotion-cache-16txtl3 {
-        background-color: #ffffff;
-        border-right: 1px solid #e0e0e0;
+        background-color: var(--secondary-background-color);
+        border-right: 1px solid var(--separator-color);
     }
 
 </style>
