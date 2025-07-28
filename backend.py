@@ -8,6 +8,7 @@ import pypdf
 from io import BytesIO
 import time
 from fpdf import FPDF
+from fpdf.errors import FPDFException # Import the specific exception
 
 # --- PROMPTS (Re-engineered for better AI output) ---
 EXTRACTION_PROMPT = """
@@ -170,11 +171,12 @@ def get_cve_details(cve_id):
     except requests.exceptions.RequestException as e:
         return {"error": f"API request error: {e}"}
 
+# --- **UPDATED** Exploit-DB Handlers for Deployment ---
 def find_exploit_for_cve(cve_id):
     if not cve_id: return None
     try:
         api_url = f"https://security-db.io/api/v1/search?q=cve:{cve_id}"
-        response = requests.get(api_url)
+        response = requests.get(api_url, timeout=10) # Added timeout
         response.raise_for_status()
         data = response.json()
         if data and isinstance(data, list) and len(data) > 0:
@@ -183,6 +185,21 @@ def find_exploit_for_cve(cve_id):
     except requests.exceptions.RequestException as e:
         print(f"Error querying Exploit-DB API: {e}")
         return None
+
+def handle_exploit_query(query, api_key):
+    cve_id = find_cve_id(query)
+    if not cve_id:
+        return "Please provide a valid CVE ID (e.g., CVE-2016-5195)."
+    exploit_data = find_exploit_for_cve(cve_id)
+    if not exploit_data:
+        return f"No public exploits found for **{cve_id}** in the public Exploit-DB API."
+    response_lines = [f"**Public exploits found for {cve_id}:**\n"]
+    for i, exploit in enumerate(exploit_data):
+        response_lines.append(f"---\n**Exploit {i+1}: {exploit['title']}**\n")
+        response_lines.append(f"View details and code here:\n{exploit['url']}")
+    response_lines.append("\n---\n\n**Disclaimer:** For educational/authorized testing only.")
+    return "\n".join(response_lines)
+
 
 # --- CHATBOT HANDLER FUNCTIONS ---
 def handle_general_chat(query, api_key):
@@ -204,20 +221,6 @@ def handle_nvd_query(query, api_key):
     except Exception as e:
         return f"Error during NVD query: {e}"
 
-def handle_exploit_query(query, api_key):
-    cve_id = find_cve_id(query)
-    if not cve_id:
-        return "Please provide a valid CVE ID (e.g., CVE-2016-5195)."
-    exploit_data = find_exploit_for_cve(cve_id)
-    if not exploit_data:
-        return f"No public exploits found for **{cve_id}** in the public Exploit-DB API."
-    response_lines = [f"**Public exploits found for {cve_id}:**\n"]
-    for i, exploit in enumerate(exploit_data):
-        response_lines.append(f"---\n**Exploit {i+1}: {exploit['title']}**\n")
-        response_lines.append(f"View details and code here:\n{exploit['url']}")
-    response_lines.append("\n---\n\n**Disclaimer:** For educational/authorized testing only.")
-    return "\n".join(response_lines)
-
 # --- PDF ARCHIVE GENERATION ---
 def create_project_pdf(chat_history):
     pdf = FPDF()
@@ -236,6 +239,7 @@ def create_project_pdf(chat_history):
         try:
             pdf.multi_cell(0, 5, content)
         except FPDFException:
+            # If a line is too long, encode with error replacement
             pdf.multi_cell(0, 5, content.encode('latin-1', 'replace').decode('latin-1'))
         pdf.ln(5)
     return pdf.output(dest='S').encode('latin-1')
