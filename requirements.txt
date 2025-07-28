@@ -1,0 +1,5 @@
+streamlit
+requests
+pypdf
+fpdf2
+google-generativeai
