@@ -1,3 +1,4 @@
+%%writefile app.py
 import streamlit as st
 from backend import (
     handle_general_chat, 
@@ -228,15 +229,20 @@ with main_cols[1]:
 with st.sidebar:
     st.header("🛠️ Configuration & Actions")
     
-    # --- **UPDATED** API Key Handling for Deployment ---
-    try:
-        # This will automatically use the secret key when deployed
-        st.session_state.api_key = st.secrets["GEMINI_API_KEY"]
+    # --- **UPDATED** API Key Handling ---
+    # This re-introduces the manual text input for the API key.
+    api_key_input = st.text_input(
+        "Your Security Token",
+        type="password",
+        key="api_key_sidebar",
+        help="Your Gemini API key is required for the AI Chat and NVD Search features."
+    )
+    if api_key_input:
+        st.session_state.api_key = api_key_input
         if configure_gemini(st.session_state.api_key):
-            st.success("API Key configured from secrets.")
-    except (KeyError, FileNotFoundError):
-        st.warning("API Key not found in secrets. Please add it in your Streamlit Cloud settings for AI features to work.")
-        st.info("You can still use the Local Nessus Parser and Exploit-DB Search.")
+            st.success("Key configured!")
+        else:
+            st.error("Invalid Key.")
 
     st.markdown("---")
     
