@@ -1,4 +1,3 @@
-%%writefile backend.py
 import requests
 import re
 import google.generativeai as genai
@@ -43,8 +42,6 @@ def configure_gemini(api_key):
 
 # --- PDF Generation ---
 def create_project_pdf(chat_history):
-    # This function is kept for compatibility if you use the UI that calls it.
-    # For a simple text download, this can be removed.
     pdf = FPDF()
     pdf.set_auto_page_break(auto=True, margin=15)
     pdf.add_page()
