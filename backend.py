@@ -12,10 +12,26 @@ from fpdf.errors import FPDFException # Import the specific exception
 
 # --- PROMPTS (Only for Gemini PDF Summarizer) ---
 EXTRACTION_PROMPT = """
-You are a security data extraction tool... (prompt unchanged)
+You are a security data extraction tool. From the following Nessus report text, extract all vulnerability findings.
+For each finding, you MUST format it on a new line exactly like this:
+CVE-ID | CVSS Score | Specific Vulnerability (e.g., "Path Traversal", max 15 words) | Specific Solution (e.g., "Upgrade to 18.19.1")
+
+- If multiple CVEs exist, list the first one. If none, use "N/A".
+- Find the best available CVSS score (v3 or v2). If none, use "N/A".
+- The "Specific Vulnerability" must be a concise summary of the *main issue*, not a generic title.
+- The "Specific Solution" must include version numbers if available.
+- Do not include any other text, headers, or explanations. Only output the data lines.
 """
 SUMMARY_PROMPT = """
-You are a security analyst... (prompt unchanged)
+You are a security analyst. Consolidate the provided list of vulnerability findings into a high-level executive summary.
+Your task is to group similar vulnerabilities to reduce redundancy.
+
+Instructions:
+1.  Group all findings related to the same software (e.g., "Node.js") under a single heading.
+2.  For each group, provide a single, overarching solution (e.g., "Upgrade Node.js to the latest patched version").
+3.  List the individual vulnerabilities within that group in a table with columns: "Specific Vulnerability", "CVSS", and "CVEs".
+4.  List any other unique, non-grouped vulnerabilities separately and structure them clearly.
+5.  Provide a brief statistical overview at the top (Total, Critical, High, Medium counts).
 """
 
 # --- Configuration & Model ---
@@ -118,10 +134,9 @@ def handle_general_chat(query, api_key):
 
 def handle_nvd_query(query, api_key):
     """
-    **RESTORED VERSION**: This function now uses the AI to intelligently parse the NVD data.
+    **NEW VERSION**: This function now parses NVD data locally, using 0 API calls.
+    It intelligently extracts the specific fields requested by the user.
     """
-    if not genai_model and not configure_gemini(api_key):
-        return "Error: Could not configure the AI model."
     cve_id = find_cve_id(query)
     if not cve_id:
         return "Please provide a valid CVE ID (e.g., CVE-2021-44228)."
@@ -131,29 +146,60 @@ def handle_nvd_query(query, api_key):
         return f"Could not retrieve data for {cve_id} from the NVD."
 
     try:
-        context = {"nvd_data": data["vulnerabilities"][0]["cve"]}
-        prompt = f"You are a precise data extraction tool. Based *only* on the provided JSON context, answer the user's question. If the data for the user's question does not exist in the context, say 'N/A'. User question: '{query}'. JSON context: ```json {context} ```"
-        return genai_model.generate_content(prompt).text
+        vuln = data["vulnerabilities"][0]["cve"]
+        response_parts = [f"**Details for {vuln.get('id', cve_id)}:**\n"]
+        
+        # A mapping of user keywords to JSON paths
+        keyword_map = {
+            "description": ("descriptions", 0, "value"),
+            "basescore": ("metrics", "cvssMetricV2", 0, "baseScore"),
+            "severity": ("metrics", "cvssMetricV2", 0, "baseSeverity"),
+            "accessvector": ("metrics", "cvssMetricV2", 0, "cvssData", "accessVector"),
+            "exploitabilityscore": ("metrics", "cvssMetricV2", 0, "exploitabilityScore"),
+            "obtainallprivilege": ("metrics", "cvssMetricV2", 0, "obtainAllPrivilege"),
+            "obtainuserprivilege": ("metrics", "cvssMetricV2", 0, "obtainUserPrivilege"),
+        }
+
+        found_something = False
+        for keyword, path in keyword_map.items():
+            if keyword.lower() in query.lower():
+                found_something = True
+                value = vuln
+                try:
+                    for key in path:
+                        value = value[key]
+                    response_parts.append(f"- **{keyword.capitalize()}:** {value}")
+                except (KeyError, IndexError, TypeError):
+                    response_parts.append(f"- **{keyword.capitalize()}:** N/A")
+        
+        # If no specific keywords were found, provide a default summary
+        if not found_something:
+            description = next((d['value'] for d in vuln.get('descriptions', []) if d['lang'] == 'en'), "N/A")
+            base_score = vuln.get("metrics", {}).get("cvssMetricV2", [{}])[0].get("baseScore", "N/A")
+            response_parts.append(f"- **Description:** {description}")
+            response_parts.append(f"- **Base Score:** {base_score}")
+
+        return "\n".join(response_parts)
+
     except (KeyError, IndexError) as e:
         return f"Error parsing NVD data: {e}"
 
 
 def handle_exploit_query(query, api_key):
     """
-    **UPDATED VERSION**: Now uses a more reliable API for exploit search.
+    **UPDATED VERSION**: Now uses a more reliable method for exploit search.
     """
     cve_id = find_cve_id(query)
     if not cve_id:
         return "Please provide a valid CVE ID (e.g., CVE-2016-5195)."
     
     try:
-        # Using a more direct API endpoint
-        api_url = f"https://www.exploit-db.com/search?cve={cve_id.split('-')[1]}-{cve_id.split('-')[2]}"
-        # A simple check to see if the page has results. A more robust solution would use a scraping library.
-        # For now, we link directly to the search results.
-        return f"You can find potential exploits for **{cve_id}** by searching on Exploit-DB.\n\n[Click here to view search results]({api_url})"
+        # Generate a direct search link to the official Exploit-DB website
+        cve_year, cve_num = cve_id.split('-')[1], cve_id.split('-')[2]
+        api_url = f"https://www.exploit-db.com/search?cve={cve_year}-{cve_num}"
+        return f"You can find potential exploits for **{cve_id}** by searching the official Exploit Database.\n\n[Click here to view search results]({api_url})"
     except Exception as e:
-        return f"An error occurred while searching for exploits: {e}"
+        return f"An error occurred while generating the exploit search link: {e}"
 
 # --- PDF ARCHIVE GENERATION ---
 def create_project_pdf(chat_history):
