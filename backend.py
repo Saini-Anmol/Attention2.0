@@ -118,8 +118,10 @@ def handle_general_chat(query, api_key):
 
 def handle_nvd_query(query, api_key):
     """
-    **NEW VERSION**: This function now parses NVD data locally, using 0 API calls.
+    **RESTORED VERSION**: This function now uses the AI to intelligently parse the NVD data.
     """
+    if not genai_model and not configure_gemini(api_key):
+        return "Error: Could not configure the AI model."
     cve_id = find_cve_id(query)
     if not cve_id:
         return "Please provide a valid CVE ID (e.g., CVE-2021-44228)."
@@ -129,27 +131,12 @@ def handle_nvd_query(query, api_key):
         return f"Could not retrieve data for {cve_id} from the NVD."
 
     try:
-        vuln = data["vulnerabilities"][0]["cve"]
-        description = "N/A"
-        for desc in vuln.get("descriptions", []):
-            if desc.get("lang") == "en":
-                description = desc.get("value", "N/A")
-                break
-        
-        base_score = "N/A"
-        access_vector = "N/A"
-        if "metrics" in vuln and "cvssMetricV2" in vuln["metrics"]:
-            cvss_v2 = vuln["metrics"]["cvssMetricV2"][0]
-            base_score = cvss_v2.get("baseScore", "N/A")
-            access_vector = cvss_v2.get("cvssData", {}).get("accessVector", "N/A")
-
-        response = f"**Details for {vuln.get('id', cve_id)}:**\n\n"
-        response += f"- **Description:** {description}\n"
-        response += f"- **CVSSv2 Base Score:** {base_score}\n"
-        response += f"- **Access Vector:** {access_vector}"
-        return response
+        context = {"nvd_data": data["vulnerabilities"][0]["cve"]}
+        prompt = f"You are a precise data extraction tool. Based *only* on the provided JSON context, answer the user's question. If the data for the user's question does not exist in the context, say 'N/A'. User question: '{query}'. JSON context: ```json {context} ```"
+        return genai_model.generate_content(prompt).text
     except (KeyError, IndexError) as e:
         return f"Error parsing NVD data: {e}"
+
 
 def handle_exploit_query(query, api_key):
     """
