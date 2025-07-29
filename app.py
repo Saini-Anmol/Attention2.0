@@ -12,7 +12,7 @@ from datetime import datetime
 
 # --- PAGE CONFIGURATION ---
 st.set_page_config(
-    page_title="Cyber Analyst Pro",
+    page_title="Attention 2.0",
     page_icon="🛡️",
     layout="wide",
     initial_sidebar_state="expanded"
@@ -124,13 +124,13 @@ if "nessus_summary" not in st.session_state: st.session_state.nessus_summary = "
 # --- HEADER ---
 header_cols = st.columns([0.7, 0.3])
 with header_cols[0]:
-    st.title("Cyber Analyst Pro 2.0")
+    st.title("Attention is ALL You Need 2.0")
     st.markdown(
-        "<h4 style='color: #5f6368; font-weight: 400;'>Developed by <strong>Anmol Saini</strong></h4>",
+        "<h4 style='color: #5f6368; font-weight: 400;'> <strong>Anmol Saini</strong></h4>",
         unsafe_allow_html=True
     )
 with header_cols[1]:
-    st.link_button("🚀 Start New Scan", "https://www.google.com", use_container_width=True)
+    st.link_button("🚀 Start New Scan", "https://www.tenable.com/products/nessus/nessus-essentials", use_container_width=True)
 
 st.markdown("---")
 
