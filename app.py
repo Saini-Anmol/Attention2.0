@@ -126,7 +126,7 @@ header_cols = st.columns([0.7, 0.3])
 with header_cols[0]:
     st.title("Attention is ALL You Need 2.0")
     st.markdown(
-        "<h4 style='color: #5f6368; font-weight: 400;'> <strong>Anmol Saini</strong></h4>",
+        "<h4 style='color: #5f6368; font-weight: 400;'>[Project Researched and Developed by]- <strong>Anmol Saini</strong></h4>",
         unsafe_allow_html=True
     )
 with header_cols[1]:
